@@ -1,26 +1,79 @@
+class PupilArray
+    def initialize()
+        @pupils = Array.new
+    end
+    def read_from_file()
+        # open the file
+        f = File.open("y4ellis.txt", "r")
+        # loop through each record in the file, adding each record to our array.
+        f.each_line { |line|
+            pupil = Pupil.new(line)
+            @pupils.push pupil
+        }
+    end
+    def all()
+        @pupils
+    end
+end
+
 class Pupil
-    def initialize(year_group, class_group, last_name, first_name, gender)
-        @year_group = year_group
-        @class_group = class_group
-        @last_name = last_name
-        @first_name = first_name
-        @gender = gender
+    def read(line)
+        fields = line.split("\t")
+        @year_group = fields[0]
+        @class_group = fields[1]
+        @last_name = fields[2]
+        @first_name = fields[3]
+        @gender = fields[4]
+        # expect at least 4 fields, if there's a 5th...
+        if fields.length > 4
+            @assessment = fields[5]
+        else
+            @assessment = :expected
+        end
     end
     def normal_name()
         @first_name + ' ' + @last_name
+    end
+    def get_assessment()
+        @assessment
+    end
+    def set_assessment(value)
+        @assessment = value
     end
 end
 
 Shoes.app width: 600, title: "Spider Manager" do
 
-    @pupils = Array.new
-    @before_radios = Array.new
+    @pupils = PupilArray.new
+    @pupils.read_from_file
+    
+    @below_radios = Array.new
     @emerge_radios = Array.new
     @expect_radios = Array.new
     @exceed_radios = Array.new
 
-    def update_display()
-        # re-build the strings from the radios
+    def update_model()
+        # there might be a per radio way to do this on click
+        @pupils.all.each_index do |i|
+            if @below_radios[i].checked 
+                @pupils.all[i].set_assessment(:below)
+            end
+            if @emerge_radios[i].checked 
+                @pupils.all[i].set_assessment(:emerging)
+            end
+            
+            if @expect_radios[i].checked 
+                @pupils.all[i].set_assessment(:expected)
+            end
+            
+            if @exceed_radios[i].checked 
+                @pupils.all[i].set_assessment(:exceeding)
+            end
+        end
+    end
+
+    def update_view()
+        # re-build the copiable strings from the model
         @below_chn = String.new
         @emerge_chn = String.new
         @expect_chn = String.new
@@ -28,26 +81,26 @@ Shoes.app width: 600, title: "Spider Manager" do
 
         @expect_fraction = 0
 
-        @pupils.each_index do |i|
-            if @before_radios[i].checked 
-                @below_chn << @pupils[i].normal_name << ', '
+        @pupils.all.each_index do |i|
+            if @pupils.all[i].get_assessment == :below 
+                @below_chn << @pupils.all[i].normal_name << ', '
             end
-            if @emerge_radios[i].checked 
-                @emerge_chn.concat(@pupils[i].normal_name + ', ')
+            if @pupils.all[i].get_assessment == :emerging
+                @emerge_chn.concat(@pupils.all[i].normal_name + ', ')
             end
             
-            if @expect_radios[i].checked 
+            if @pupils.all[i].get_assessment == :expected 
                 @expect_fraction = @expect_fraction + 1
-                @expect_chn.concat(@pupils[i].normal_name + ', ')
+                @expect_chn.concat(@pupils.all[i].normal_name + ', ')
             end
             
-            if @exceed_radios[i].checked 
-                @exceed_chn.concat(@pupils[i].normal_name + ', ')
+            if @pupils.all[i].get_assessment == :exceeding
+                @exceed_chn.concat(@pupils.all[i].normal_name + ', ')
             end
         end
         # add summary stats
-        percent = (100.0 * @expect_fraction / @pupils.count).round(2)
-        @expect_chn.concat("#{@expect_fraction}/#{@pupils.count} or #{percent}%")
+        percent = (100.0 * @expect_fraction / @pupils.all.count).round(2)
+        @expect_chn.concat("#{@expect_fraction}/#{@pupils.all.count} or #{percent}%")
         # put the strings in the edit boxes
         @below_edit.text = @below_chn
         @emerge_edit.text = @emerge_chn
@@ -55,30 +108,22 @@ Shoes.app width: 600, title: "Spider Manager" do
         @exceed_edit.text = @exceed_chn
     end
 
-    # open the file
-    f = File.open("y4ellis.txt", "r")
-    # loop through each record in the file, adding each record to our array.
-    f.each_line { |line|
-        fields = line.split("\t")
-        pupil = Pupil.new(fields[0],fields[1],fields[2],fields[3],fields[4])
-        @pupils.push pupil
-    }
-
     stack_width = self.width / 2
     
     flow do
         stack width: stack_width do
             caption "Children"
             button "Update" do
-                update_display
+                update_model
+                update_view
             end
-            @pupils.each_index do |i|
+            @pupils.all.each_index do |i|
                 flow do
-                    @before_radios.push radio i
+                    @below_radios.push radio i
                     @emerge_radios.push radio i
                     @expect_radios.push radio i, checked: true
                     @exceed_radios.push radio i
-                    para @pupils[i].normal_name;
+                    para @pupils.all[i].normal_name;
                 end
             end
         end
