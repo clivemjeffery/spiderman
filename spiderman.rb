@@ -2,12 +2,14 @@ class PupilArray
     def initialize()
         @pupils = Array.new
     end
-    def read_from_file()
+    def read_from_file(filename)
         # open the file
-        f = File.open("y4ellis.txt", "r")
+        debug filename
+        f = File.open(filename, "r")
         # loop through each record in the file, adding each record to our array.
         f.each_line { |line|
-            pupil = Pupil.new(line)
+            pupil = Pupil.new
+            pupil.read(line)
             @pupils.push pupil
         }
     end
@@ -45,8 +47,7 @@ end
 Shoes.app width: 600, title: "Spider Manager" do
 
     @pupils = PupilArray.new
-    @pupils.read_from_file
-    
+
     @below_radios = Array.new
     @emerge_radios = Array.new
     @expect_radios = Array.new
@@ -73,6 +74,28 @@ Shoes.app width: 600, title: "Spider Manager" do
     end
 
     def update_view()
+        # re-build the radios
+        @below_radios = Array.new
+        @emerge_radios = Array.new
+        @expect_radios = Array.new
+        @exceed_radios = Array.new
+        @radio_stack.clear
+        @pupils.all.each_index do |i|
+            @radio_stack.append do
+                flow do
+                    r = radio i
+                    @below_radios.push r
+                    r = radio i
+                    @emerge_radios.push r
+                    r = radio i
+                    @expect_radios.push r
+                    r = radio i
+                    @exceed_radios.push r
+                    para @pupils.all[i].normal_name
+                end
+            end
+        end
+        
         # re-build the copiable strings from the model
         @below_chn = String.new
         @emerge_chn = String.new
@@ -113,19 +136,18 @@ Shoes.app width: 600, title: "Spider Manager" do
     flow do
         stack width: stack_width do
             caption "Children"
-            button "Update" do
-                update_model
-                update_view
-            end
-            @pupils.all.each_index do |i|
-                flow do
-                    @below_radios.push radio i
-                    @emerge_radios.push radio i
-                    @expect_radios.push radio i, checked: true
-                    @exceed_radios.push radio i
-                    para @pupils.all[i].normal_name;
+            flow do
+                button "Open..." do
+                    filename = ask_open_file()
+                    @pupils.read_from_file(filename)
+                    update_view
+                end
+                button "Update" do
+                    update_model
+                    update_view
                 end
             end
+            @radio_stack = stack # placeholder for radio buttons
         end
         stack width: stack_width do
             stack do
